@@ -24,35 +24,43 @@ namespace aaudiodemo {
         AAudioEngine &operator=(const AAudioEngine &) = delete;
 
     public:
+        bool Init();
+
         void Start();
 
         void Pause();
 
         void Stop();
 
-        void Destroy();
 
     private:
+        bool hasPlay{false};
+        bool mValid{false};
         int32_t mSampleRate{44100};
         int16_t mChannel{2};
         aaudio_format_t mFormat{AAUDIO_FORMAT_PCM_I16};
         ///pcm file path
         std::string mFilePath;
         AAudioStream *mAudioStream{nullptr};
+
+
+        FILE *file{nullptr};
+        uint8_t *mBufferData{nullptr};
+        std::condition_variable mPlayCV;
+        std::mutex mPlayMutex;
+        std::thread mPlayThread;
     private:
         void workFunc();
 
         AAudioStreamBuilder *createStreamBuilder();
 
-        void createPlaybackStream();
+        bool createPlaybackStream();
 
         void setupPlaybackStreamParameters(AAudioStreamBuilder *builder);
 
-    private:
-        FILE *file{nullptr};
-        std::condition_variable mPlayCV;
-        std::mutex mPlayMutex;
-        std::thread mPlayThread;
+        void destroy();
+
+
     };
 
 }
