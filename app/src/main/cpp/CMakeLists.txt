@@ -9,6 +9,13 @@ cmake_minimum_required(VERSION 3.10.2)
 
 project("aaudiodemo")
 
+option(AAUDIO_CALLBACK "option for aaudio process data type" ON)
+
+if (AAUDIO_CALLBACK)
+    add_definitions(-DAAUDIO_CALLBACK)
+endif ()
+
+
 # Creates and names a library, sets it as either STATIC
 # or SHARED, and provides the relative paths to its source code.
 # You can define multiple libraries, and CMake builds them for you.

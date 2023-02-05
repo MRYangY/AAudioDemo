@@ -49,6 +49,16 @@ namespace aaudiodemo {
          */
         void Stop();
 
+#if AAUDIO_CALLBACK
+
+        aaudio_data_callback_result_t dataCallback(AAudioStream *stream,
+                                                   void *audioData,
+                                                   int32_t numFrames);
+
+        void errorCallback(AAudioStream *stream,
+                           aaudio_result_t  __unused error);
+
+#endif
 
     private:
         bool hasPlay{false};
@@ -58,14 +68,20 @@ namespace aaudiodemo {
         aaudio_format_t mFormat{AAUDIO_FORMAT_PCM_I16};
         ///pcm file path
         AAudioStream *mAudioStream{nullptr};
-
         AAsset *mAsset{nullptr};
+        std::mutex mRestartingLock;
+#if !AAUDIO_CALLBACK
         uint8_t *mBufferData{nullptr};
         std::condition_variable mPlayCV;
         std::mutex mPlayMutex;
         std::thread mPlayThread;
+#endif
     private:
+#if !AAUDIO_CALLBACK
+
         void workFunc();
+
+#endif
 
         AAudioStreamBuilder *createStreamBuilder();
 
@@ -73,8 +89,9 @@ namespace aaudiodemo {
 
         void setupPlaybackStreamParameters(AAudioStreamBuilder *builder);
 
-        void destroy();
+        void restartStream();
 
+        void destroy();
 
     };
 
