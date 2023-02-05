@@ -7,8 +7,13 @@
 #define BUFFER_SIZE 2048
 #define TIMEOUT_NANO 800000000L
 namespace aaudiodemo {
-    AAudioEngine::AAudioEngine(const std::string &filePath) {
-        mFilePath = filePath;
+    AAudioEngine::AAudioEngine(AAssetManager *assetManager, const std::string &filePath,
+                               uint32_t sampleRate, uint16_t channel,
+                               uint32_t format) {
+        mSampleRate = sampleRate;
+        mChannel = channel;
+        mFormat = format == 2 ? AAUDIO_FORMAT_PCM_I16 : AAUDIO_FORMAT_UNSPECIFIED;
+        mAsset = AAssetManager_open(assetManager, filePath.c_str(), 0);
         LOGI("AAudioEngine::AAudioEngine, filePath:%s", filePath.c_str());
     }
 
@@ -17,8 +22,6 @@ namespace aaudiodemo {
     }
 
     bool AAudioEngine::Init() {
-        file = fopen(mFilePath.c_str(), "r");
-        if (!file) { return false; }
         createPlaybackStream();
         mPlayThread = std::thread(&AAudioEngine::workFunc, this);
         mValid = true;
@@ -52,7 +55,8 @@ namespace aaudiodemo {
     }
 
     void AAudioEngine::Stop() {
-        if (mAudioStream) {
+        if (mAudioStream && mValid) {
+            LOGI("AAudioEngine::Stop, stop begin");
             std::unique_lock<std::mutex> lock(mPlayMutex);
             aaudio_result_t result = AAudioStream_requestStop(mAudioStream);
             if (result != AAUDIO_OK) {
@@ -62,18 +66,19 @@ namespace aaudiodemo {
             hasPlay = false;
             mValid = false;
             mPlayCV.notify_all();
+            LOGI("AAudioEngine::Stop, stop finish");
         }
     }
 
     void AAudioEngine::destroy() {
+        LOGI("AAudioEngine::destroy, %d", mValid);
         if (mValid) {
             Stop();
-            mPlayThread.join();
-            mValid = false;
         }
-        if (file) {
-            fclose(file);
-            file = nullptr;
+        mPlayThread.join();
+        if (mAsset) {
+            AAsset_close(mAsset);
+            mAsset = nullptr;
         }
         if (mAudioStream) {
             AAudioStream_close(mAudioStream);
@@ -90,25 +95,32 @@ namespace aaudiodemo {
             {
                 std::unique_lock<std::mutex> lock(mPlayMutex);
                 while (!hasPlay && mValid) {
+                    LOGI("1111111");
                     mPlayCV.wait(lock);
+                    LOGI("2222222");
                 }
-                if (!mValid) {
-                    break;
-                }
-                if (mBufferData == nullptr) {
-                    mBufferData = static_cast<uint8_t *>(calloc(1, BUFFER_SIZE));
-                }
-                int realSize = fread(mBufferData, BUFFER_SIZE, 1, file);
-                aaudio_result_t result = AAudioStream_write(mAudioStream, mBufferData,
-                                                            realSize / (mChannel == 2 ? 2 : 1) /
-                                                            (mFormat == AAUDIO_FORMAT_PCM_I16 ? 2
-                                                                                              : 1),
-                                                            TIMEOUT_NANO);
-                LOGI("AAudioEngine::workFunc, result:%d", result);
             }
+            if (!mValid) {
+                break;
+            }
+            if (mBufferData == nullptr) {
+                mBufferData = static_cast<uint8_t *>(calloc(1, BUFFER_SIZE));
+            }
+            int realSize = AAsset_read(mAsset, mBufferData, BUFFER_SIZE);
+            if (realSize <= 0) {
+                LOGI("AAudioEngine::workFunc, file eof!!!");
+                break;
+            }
+            aaudio_result_t result = AAudioStream_write(mAudioStream, mBufferData,
+                                                        realSize / (mChannel == 2 ? 2 : 1) /
+                                                        (mFormat == AAUDIO_FORMAT_PCM_I16 ? 2
+                                                                                          : 1),
+                                                        TIMEOUT_NANO);
+            LOGI("AAudioEngine::workFunc, result:%d", result);
         }
         LOGI("AAudioEngine::workFunc, Play thread exit!!");
     }
+
 
     AAudioStreamBuilder *AAudioEngine::createStreamBuilder() {
         AAudioStreamBuilder *builder = nullptr;

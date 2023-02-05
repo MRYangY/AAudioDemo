@@ -9,6 +9,12 @@
     tools:context=".MainActivity">
 
     <Button
+        android:id="@+id/init_audio"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Init" />
+
+    <Button
         android:id="@+id/play_audio"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

@@ -6,6 +6,9 @@
 #define AAUDIODEMO_AAUDIOENGINE_H
 
 #include <aaudio/AAudio.h>
+#include <assert.h>
+#include <android/asset_manager.h>
+#include <android/asset_manager_jni.h>
 #include <string>
 #include "logging_macros.h"
 #include <thread>
@@ -15,7 +18,8 @@
 namespace aaudiodemo {
     class AAudioEngine {
     public:
-        AAudioEngine(const std::string &filePath);
+        AAudioEngine(AAssetManager *assetManager, const std::string &filePath, uint32_t sampleRate,
+                     uint16_t channel, uint32_t format);
 
         ~AAudioEngine();
 
@@ -24,12 +28,25 @@ namespace aaudiodemo {
         AAudioEngine &operator=(const AAudioEngine &) = delete;
 
     public:
+        /**
+         * 初始化播放引擎
+         * @return 初始化结果
+         */
         bool Init();
 
+        /**
+         * 开始播放
+         */
         void Start();
 
+        /**
+         * 暂停播放
+         */
         void Pause();
 
+        /**
+         * 停止播放
+         */
         void Stop();
 
 
@@ -40,11 +57,9 @@ namespace aaudiodemo {
         int16_t mChannel{2};
         aaudio_format_t mFormat{AAUDIO_FORMAT_PCM_I16};
         ///pcm file path
-        std::string mFilePath;
         AAudioStream *mAudioStream{nullptr};
 
-
-        FILE *file{nullptr};
+        AAsset *mAsset{nullptr};
         uint8_t *mBufferData{nullptr};
         std::condition_variable mPlayCV;
         std::mutex mPlayMutex;

@@ -6,11 +6,16 @@ using namespace aaudiodemo;
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_com_example_aaudiodemo_MainActivity_nativeCreateAAudioEngine(JNIEnv *env, jobject thiz,
-                                                                  jstring file_path) {
+                                                                  jobject assetManager,
+                                                                  jstring file_path,
+                                                                  jint sampleRate,
+                                                                  jint audioChannel,
+                                                                  jint audioFormat) {
     jboolean isCopy;
     const char *convertedValue = (env)->GetStringUTFChars(file_path, &isCopy);
     std::string string = convertedValue;
-    auto playEngine = new AAudioEngine(string);
+    auto playEngine = new AAudioEngine(AAssetManager_fromJava(env, assetManager), string,
+                                       sampleRate, audioChannel, audioFormat);
     env->ReleaseStringUTFChars(file_path, convertedValue);
     bool ret = playEngine->Init();
     LOGI("nativeCreateAAudioEngine, init ret:%d", ret);
